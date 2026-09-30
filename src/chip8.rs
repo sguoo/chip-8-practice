@@ -1,3 +1,5 @@
+use core::panic;
+
 const START:usize = 0x200;
 const MEMORY_SIZE:usize = 4096;
 const SCREEN_W:usize = 64;
@@ -118,7 +120,30 @@ impl Chip8 {
         return instruction
     }
 
-    pub fn _execute(&mut self) {
-
+    #[allow(unused_variables, non_snake_case)]
+    pub fn _execute(&mut self, instruction: Instruction) {
+        match instruction {
+            Instruction { self_type: 0, x, y, n, nn, nnn } => match instruction {
+                Instruction { self_type:0, x:0, y:E, n:0, ..} => self.screen.fill(false),
+                _ => panic!("알 수 없는  명령어 입니다: {:0X}{:0X}{:0X}{:0X}", instruction.self_type, instruction.x, instruction.y, instruction.n)
+            },
+            Instruction { self_type:1, .. } => self.pc = instruction.nnn,
+            Instruction { self_type:6, ..} => self.v_register[instruction.x] = instruction.nn,
+            Instruction { self_type:7, .. } => self.v_register[instruction.x] += instruction.nn,
+            Instruction { self_type:8, n:0, .. } => self.v_register[instruction.y] = self.v_register[instruction.x],
+            Instruction { self_type:8, .. } => {
+                self.v_register[instruction.x] += self.v_register[instruction.y];
+                self.v_register[0xF] = 1;
+            }
+            Instruction { self_type:A, ..} => self.i_register = instruction.nnn,
+            Instruction { self_type:F, nn:07, .. } => self.v_register[instruction.x] = self.delay_timer,
+            Instruction { self_type:F, nn:15, .. } => self.delay_timer = self.v_register[instruction.x],
+            Instruction { self_type:F, nn:33, .. } => {
+                self.memory[self.i_register as usize] = (self.v_register[instruction.x] / 100);
+                self.memory[(self.i_register + 1) as usize] = ((self.v_register[instruction.x] % 100) / 10);
+                self.memory[(self.i_register + 2) as usize] = ((self.v_register[instruction.x] % 100) % 10);
+            },
+            _ => panic!("알 수 없는  명령어 입니다: {:0X}{:0X}{:0X}{:0X}", instruction.self_type, instruction.x, instruction.y, instruction.n)
+        }
     }
 }
