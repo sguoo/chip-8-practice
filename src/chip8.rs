@@ -100,7 +100,7 @@ impl Chip8 {
     }
 
     #[allow(non_snake_case)]
-    pub fn decode(&self, &opcode: &u16) -> Instruction {
+    pub fn decode(&self, opcode: u16) -> Instruction {
         let self_type = opcode >> 12;
         let X: usize = (opcode >> 8 &0xF) as usize;
         let Y: usize = (opcode >> 4 &0xF) as usize;
@@ -121,7 +121,7 @@ impl Chip8 {
     }
 
     #[allow(unused_variables, non_snake_case)]
-    pub fn _execute(&mut self, instruction: Instruction) {
+    pub fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction { self_type: 0, x, y, n, nn, nnn } => match instruction {
                 Instruction { self_type:0, x:0, y:E, n:0, ..} => self.screen.fill(false),
@@ -135,15 +135,21 @@ impl Chip8 {
                 self.v_register[instruction.x] += self.v_register[instruction.y];
                 self.v_register[0xF] = 1;
             }
-            Instruction { self_type:A, ..} => self.i_register = instruction.nnn,
-            Instruction { self_type:F, nn:07, .. } => self.v_register[instruction.x] = self.delay_timer,
-            Instruction { self_type:F, nn:15, .. } => self.delay_timer = self.v_register[instruction.x],
-            Instruction { self_type:F, nn:33, .. } => {
+            Instruction { self_type:0xA, ..} => self.i_register = instruction.nnn,
+            Instruction { self_type:0xF, nn:07, .. } => self.v_register[instruction.x] = self.delay_timer,
+            Instruction { self_type:0xF, nn:15, .. } => self.delay_timer = self.v_register[instruction.x],
+            Instruction { self_type:0xF, nn:33, .. } => {
                 self.memory[self.i_register as usize] = (self.v_register[instruction.x] / 100);
                 self.memory[(self.i_register + 1) as usize] = ((self.v_register[instruction.x] % 100) / 10);
                 self.memory[(self.i_register + 2) as usize] = ((self.v_register[instruction.x] % 100) % 10);
             },
             _ => panic!("알 수 없는  명령어 입니다: {:0X}{:0X}{:0X}{:0X}", instruction.self_type, instruction.x, instruction.y, instruction.n)
         }
+    }
+
+    pub fn step(&mut self) {
+        let opcode = self.fetch();
+
+        self.execute(self.decode(opcode));
     }
 }

@@ -11,8 +11,6 @@ fn main() {
     chip8.dump(0x050,result.len());
     
     for _ in 0..20 { 
-        let opcode = chip8.fetch();
-
-        chip8.decode(&opcode);
+        chip8.step();
     }
 }
