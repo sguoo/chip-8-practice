@@ -10,7 +10,7 @@ fn main() {
     chip8.read_rom(&result);
     chip8.dump(0x250,result.len());
     
-    for _ in 0..50 { 
+    for _ in 0..1000 { 
         chip8.step();
     }
     chip8.print_screen();

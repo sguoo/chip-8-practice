@@ -1,4 +1,3 @@
-use core::panic;
 
 const START:usize = 0x200;
 const MEMORY_SIZE:usize = 4096;
@@ -124,26 +123,92 @@ impl Chip8 {
 
     #[allow(unused_variables, non_snake_case)]
     pub fn execute(&mut self, instruction: Instruction) { // 명령어 실행
+
         match instruction {
-            Instruction { self_type: 0, nnn:0x0E0, .. } => self.screen.fill(false), // 화면 끄기
+            Instruction { self_type:0, nnn:0x0E0, .. } => self.screen.fill(false), // 화면 끄기
+            Instruction { self_type:0, nnn, ..} => {
+                self.stack_pointer -= 1;
+                self.pc = self.stack[self.stack_pointer]
+            }
             Instruction { self_type:1, nnn, .. } => self.pc = nnn, 
+            Instruction { self_type:2, nnn, .. } => {
+                self.stack[self.stack_pointer] = self.pc;
+                self.stack_pointer += 1;
+                self.pc = nnn;
+            }
+            Instruction { self_type:3, x, nn, ..} =>  {
+                if self.v_register[x] == nn {
+                    self.pc += 2
+                }
+            },
+            Instruction { self_type:4, x, nn, ..} => {
+                if self.v_register[x] != nn {
+                    self.pc += 2
+                }
+            },
+            Instruction { self_type:5, x, y, ..} => {
+                if self.v_register[x] == self.v_register[y] {
+                    self.pc += 2
+                }
+            }
             Instruction { self_type:6, x, nn, ..} => self.v_register[x] = nn,
             Instruction { self_type:7, x, nn,.. } => self.v_register[x] = self.v_register[x].wrapping_add(nn),
-            Instruction { self_type:8, n:0, x, y,.. } => self.v_register[x] = self.v_register[y],
-            Instruction { self_type:8, n:0x4, x, y, .. } => {
+            Instruction { self_type:8, x, y, n:0, .. } => self.v_register[x] = self.v_register[y],
+            Instruction { self_type:8, x, y, n:1, ..} => self.v_register[x] = self.v_register[x] | self.v_register[y],
+            Instruction { self_type:8, x, y, n:2, .. } => self.v_register[x] = self.v_register[x] & self.v_register[y],
+            Instruction { self_type:8, x, y, n:3, ..} => self.v_register[x] = self.v_register[x] ^ self.v_register[y],
+            Instruction { self_type:8, x, y, n:0x4, .. } => {
                 let (result, overflowed) = self.v_register[x].overflowing_add(self.v_register[y]);
                 self.v_register[x] = result;
                 self.v_register[0xF] = overflowed as u8;
+            }
+            Instruction { self_type:8, x, y, n:5, .. } => { 
+                let (result, underflowed) = self.v_register[x].overflowing_sub(self.v_register[y]);
+                self.v_register[x] = result;
+                self.v_register[0xF] = !underflowed as u8; 
+            },
+            Instruction { self_type:8, x, y, n:6, .. } => {
+                self.v_register[x] = self.v_register[y];
+                let r_bit = self.v_register[x] & 1;
+                self.v_register[x] = self.v_register[x] >> 1;
+                self.v_register[0xF] = r_bit;
+            }
+            Instruction { self_type:8, x, y, n:7, .. } => { 
+            let (result, underflowed) = self.v_register[y].overflowing_sub(self.v_register[x]);
+                self.v_register[x] = result;
+                self.v_register[0xF] = !underflowed as u8; 
+            }
+            Instruction { self_type:8, x, y, n:0xE, .. } => {
+                self.v_register[x] = self.v_register[y];
+                let l_bit = self.v_register[x] >> 7;
+                self.v_register[x] = self.v_register[x] << 1;
+                self.v_register[0xF] = l_bit;
+            }
+            Instruction { self_type:9, x, y, .. } => {
+                if self.v_register[x] != self.v_register[y] {
+                    self.pc += 2
+                }
             }
             Instruction { self_type:0xA, nnn, ..} => self.i_register = nnn,
             Instruction { self_type:0xD, x, y, n, ..} => self.draw(x, y, n),
             Instruction { self_type:0xF, x, nn:0x07, .. } => self.v_register[x] = self.delay_timer,
             Instruction { self_type:0xF, x, nn:0x15, .. } => self.delay_timer = self.v_register[x],
+            Instruction { self_type:0xF, x, nn:0x1E, .. } => self.i_register = self.i_register + self.v_register[x] as u16,
             Instruction { self_type:0xF, x, nn:0x33, .. } => {
                 self.memory[self.i_register as usize] = self.v_register[x] / 100;
                 self.memory[(self.i_register + 1) as usize] = (self.v_register[x] % 100) / 10;
                 self.memory[(self.i_register + 2) as usize] = self.v_register[x] % 10;
             },
+            Instruction { self_type:0xF, x, nn:0x55, .. } => {
+                for i in 0..x + 1 {
+                    self.memory[self.i_register as usize + i] = self.v_register[i]  
+                }
+            }
+            Instruction { self_type:0xF, x, nn:0x65, .. } => {
+                for i in 0..x + 1 {
+                    self.v_register[i] = self.memory[self.i_register as usize + i]
+                }
+            }
             _ => panic!("알 수 없는  명령어  {:04X}", instruction.opcode)
         }
     }
@@ -180,8 +245,6 @@ impl Chip8 {
     }
 
     pub fn print_screen(&self) {
-
-
         for r in 0..32 as usize {
             for c in 0..64 {
                 if self.screen[r * 64 + c] {
