@@ -13,4 +13,5 @@ fn main() {
     for _ in 0..50 { 
         chip8.step();
     }
+    chip8.print_screen();
 }

@@ -178,4 +178,20 @@ impl Chip8 {
             }
         }
     }
+
+    pub fn print_screen(&self) {
+
+
+        for r in 0..32 as usize {
+            for c in 0..64 {
+                if self.screen[r * 64 + c] {
+                    print!("■")
+                } else {
+                    print!(" ")
+                }
+            }
+            print!("\n")
+        }
+
+    }
 }
