@@ -191,6 +191,16 @@ impl Chip8 {
             }
             Instruction { self_type:0xA, nnn, ..} => self.i_register = nnn,
             Instruction { self_type:0xD, x, y, n, ..} => self.draw(x, y, n),
+            Instruction { self_type:0xE, x, nn:0x9E, .. } => {
+                if self.key_input[self.v_register[x] as usize] {
+                    self.pc += 2;
+                }
+            }
+            Instruction { self_type:0xE, x, nn:0xA1, .. } => {
+                if !self.key_input[self.v_register[x] as usize] {
+                    self.pc += 2
+                }
+            }
             Instruction { self_type:0xF, x, nn:0x07, .. } => self.v_register[x] = self.delay_timer,
             Instruction { self_type:0xF, x, nn:0x15, .. } => self.delay_timer = self.v_register[x],
             Instruction { self_type:0xF, x, nn:0x1E, .. } => self.i_register = self.i_register + self.v_register[x] as u16,
