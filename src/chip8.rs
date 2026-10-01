@@ -52,7 +52,7 @@ pub struct Instruction {
 }
 
 impl Chip8 {
-    pub fn read_rom(&mut self, rom: &[u8]) { //롬 읽기
+    pub fn read_rom(&mut self, rom: &[u8]) { // 롬 읽기
         const MEMORY_ROM_SIZE: usize = 4096 - 0x200;
 
 
@@ -66,7 +66,7 @@ impl Chip8 {
         self.memory[0x050..0x050+CHIP8_FONTSET.len()].copy_from_slice(&CHIP8_FONTSET);
     }
 
-    pub fn new() -> Self { //초기화
+    pub fn new() -> Self { // 초기화
         Chip8 {
             memory: [0; MEMORY_SIZE],
             v_register: [0; 16],
@@ -81,7 +81,7 @@ impl Chip8 {
         }
     }
 
-    pub fn dump(&self, start_address:usize, rom_len: usize) { //출력
+    pub fn dump(&self, start_address:usize, rom_len: usize) { // 출력
         for (index, chunk) in self.memory[start_address..start_address+rom_len].chunks(16).enumerate() {
             print!("{:04X}: ", index*16+start_address);
             for byte in chunk {
@@ -91,7 +91,7 @@ impl Chip8 {
         }
     }
 
-    pub fn fetch(&mut self) -> u16 { //8byte -> 16byte
+    pub fn fetch(&mut self) -> u16 { // 8byte -> 16byte
         let high: u8 = self.memory[self.pc as usize];
         let low: u8 = self.memory[self.pc as usize + 1];
         let opcode: u16 = (high as u16) <<8 | low as u16;
@@ -123,10 +123,10 @@ impl Chip8 {
     }
 
     #[allow(unused_variables, non_snake_case)]
-    pub fn execute(&mut self, instruction: Instruction) {
+    pub fn execute(&mut self, instruction: Instruction) { // 명령어 실행
         match instruction {
-            Instruction { self_type: 0, nnn:0x0E0, .. } => self.screen.fill(false),
-            Instruction { self_type:1, nnn, .. } => self.pc = nnn,
+            Instruction { self_type: 0, nnn:0x0E0, .. } => self.screen.fill(false), // 화면 끄기
+            Instruction { self_type:1, nnn, .. } => self.pc = nnn, 
             Instruction { self_type:6, x, nn, ..} => self.v_register[x] = nn,
             Instruction { self_type:7, x, nn,.. } => self.v_register[x] = self.v_register[x].wrapping_add(nn),
             Instruction { self_type:8, n:0, x, y,.. } => self.v_register[x] = self.v_register[y],
@@ -136,7 +136,7 @@ impl Chip8 {
                 self.v_register[0xF] = overflowed as u8;
             }
             Instruction { self_type:0xA, nnn, ..} => self.i_register = nnn,
-            Instruction { self_type:0xD, ..} => {},
+            Instruction { self_type:0xD, x, y, n, ..} => self.draw(x, y, n),
             Instruction { self_type:0xF, x, nn:0x07, .. } => self.v_register[x] = self.delay_timer,
             Instruction { self_type:0xF, x, nn:0x15, .. } => self.delay_timer = self.v_register[x],
             Instruction { self_type:0xF, x, nn:0x33, .. } => {
@@ -152,5 +152,30 @@ impl Chip8 {
         let opcode = self.fetch();
 
         self.execute(self.decode(opcode));
+    }
+
+    pub fn draw(&mut self, x:usize, y:usize, n:u8) {
+        let x_coordinate = (self.v_register[x] % 64) as usize;
+        let y_coordinate = (self.v_register[y] % 32) as usize;
+
+        self.v_register[0xF] = 0;
+
+        for r in 0..n as usize {
+            let byte = self.memory[self.i_register as usize + r];
+            if y_coordinate + r >= 32 {
+                break;
+            }
+            for c in 0..8 {
+                if x_coordinate + c >= 64 {
+                    break;
+                }
+                if (byte >> (7-c)) & 1 == 1 {
+                    if self.screen[(y_coordinate + r) * 64 + x_coordinate + c] {
+                        self.v_register[0xF] = 1;
+                    }
+                    self.screen[(y_coordinate + r) * 64 + x_coordinate + c] ^= true;
+                }
+            }
+        }
     }
 }

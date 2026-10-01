@@ -8,9 +8,9 @@ fn main() {
     let mut chip8 = Chip8::new();
 
     chip8.read_rom(&result);
-    chip8.dump(0x050,result.len());
+    chip8.dump(0x250,result.len());
     
-    for _ in 0..20 { 
+    for _ in 0..50 { 
         chip8.step();
     }
 }
